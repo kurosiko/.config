@@ -1,0 +1,16 @@
+" ~/.vimrc — entry point
+" Configurations live in ~/.vim/config/*.vim, sourced in dependency order.
+
+set nocompatible
+filetype plugin indent on
+
+source ~/.config/vim/config/bootstrap.vim
+source ~/.config/vim/config/options.vim
+source ~/.config/vim/config/plugins.vim
+source ~/.config/vim/config/theme.vim
+source ~/.config/vim/config/completion.vim
+source ~/.config/vim/config/lsp.vim
+source ~/.config/vim/config/statusline.vim
+source ~/.config/vim/config/visuals.vim
+source ~/.config/vim/config/yazi.vim
+source ~/.config/vim/config/r.vim

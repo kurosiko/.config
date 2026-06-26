@@ -1,0 +1,16 @@
+# Auto-generated
+configstore/
+
+# Node modules
+node_modules/
+
+# Swap files
+*.swp
+*.swo
+*~
+
+# LMDB databases
+*.mdb
+
+# macOS
+.DS_Store

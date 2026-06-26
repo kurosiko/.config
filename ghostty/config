@@ -1,0 +1,25 @@
+theme = Overnight Slumber
+cursor-color = #ce92e8
+config-file = ?auto/theme.ghostty
+background-opacity = 0.85
+background-blur-radius = 20
+background-image = /Users/kurosiko/git/Assets/HLVF5Kwa8AAMj3Q.jpg
+background-image-fit = cover
+background-image-opacity = 0.3
+macos-titlebar-style = hidden
+background-image-position = center
+window-padding-x = 5
+window-padding-y = 10
+window-padding-color = extend
+window-padding-balance = true
+cursor-style = "bar"
+adjust-cursor-thickness = 5
+cursor-style-blink = false
+
+font-family = JetBrainsMono Nerd Font
+font-size = 14
+
+clipboard-read = allow
+clipboard-write = allow
+
+
