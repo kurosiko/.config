@@ -2,7 +2,7 @@
 " yazi file picker — :! で Ghostty 側に起動 / nix develop は floaterm
 " ------------------------------------------------------------
 
-let s:yazi_bin = '/run/current-system/sw/bin/yazi'
+let s:yazi_bin = 'yazi'
 let s:root_markers = ['.git', 'flake.nix', 'shell.nix', 'package.json']
 
 function! YaziOpen() abort

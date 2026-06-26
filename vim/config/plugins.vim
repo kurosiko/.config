@@ -25,7 +25,6 @@ call plug#begin()
     Plug 'Shougo/ddc-filter-sorter_rank'
 
     " extra
-    " Plug 'luochen1990/rainbow'
     Plug 'catppuccin/vim', { 'as': 'catppuccin' }
     Plug 'direnv/direnv.vim'
     Plug 'jiangmiao/auto-pairs'

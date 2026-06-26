@@ -9,7 +9,7 @@ output.txt
 result
 result-*
 
-*/tests
+tests/
 
 # macOS
 .DS_Store
