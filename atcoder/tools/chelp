@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+C=$(tput setaf 6 2>/dev/null || echo '')
+G=$(tput setaf 2 2>/dev/null || echo '')
+Y=$(tput setaf 3 2>/dev/null || echo '')
+M=$(tput setaf 5 2>/dev/null || echo '')
+B=$(tput bold 2>/dev/null || echo '')
+R=$(tput sgr0 2>/dev/null || echo '')
+
+cat <<EOF
+
+ ${B}AtCoder Dev Env${R}
+
+ ${C}cpprun${R}          compile & run C++
+ ${C}cpprun -t${R}       run sample tests
+ ${C}cpprun -d${R}       debug + sanitizers
+ ${C}cpprun -k${R}       keep binary
+
+ ${Y}setup${R}           login via browser cookie
+ ${Y}aclogin${R}         save REVEL_SESSION
+ ${Y}acc new <id>${R}    create contest dir
+ ${Y}acc add${R}         add task dirs
+ ${Y}acc submit${R}      submit solution
+
+ ${M}oj test${R}         official test runner
+ ${M}oj submit${R}       submit via URL
+
+ ${G}chelp${R}           show this message
+
+EOF

@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""atsub - AtCoder submit via REVEL_SESSION cookie"""
+import argparse, os, re, sys, json
+from pathlib import Path
+from urllib.request import Request, urlopen, build_opener, HTTPCookieProcessor
+from urllib.parse import urlencode
+COOKIE_JAR = Path.home() / "Library/Application Support/online-judge-tools/cookie.jar"
+SUBMIT_URL = "https://atcoder.jp/contests/{contest}/submit"
+TASK_URL   = "https://atcoder.jp/contests/{contest}/tasks/{task}"
+
+LANG_MAP = {
+    ".cpp": "5005",   # C++ 23 (gcc 12.2)
+    ".cc":  "5005",
+    ".cxx": "5005",
+    ".c":   "5003",   # C 23 (gcc 12.2)
+    ".py":  "5055",   # Python (CPython 3.11.4)
+    ".rs":  "5054",   # Rust
+}
+
+def _req(url, data=None, cookie=None):
+    req = Request(url, data=data)
+    req.add_header("User-Agent", "atsub/1.0")
+    if cookie:
+        req.add_header("Cookie", cookie)
+    with urlopen(req) as resp:
+        return resp.read().decode()
+
+def submit(contest, task, filepath, cookie_str):
+    url = SUBMIT_URL.format(contest=contest)
+    html = _req(url, cookie=cookie_str)
+    m = re.search(r'var\s+csrfToken\s*=\s*"([^"]+)"', html)
+    if not m:
+        # try alternate patterns
+        m = re.search(r"var\s+csrfToken\s*=\s*'([^']+)'", html)
+    if not m:
+        print("ERROR: CSRF token not found. Maybe not logged in?", file=sys.stderr)
+        sys.exit(1)
+    csrf = m.group(1)
+
+    source = Path(filepath).read_text()
+    ext = Path(filepath).suffix.lower()
+    lang = LANG_MAP.get(ext, "5005")
+
+    data = urlencode({
+        "csrf_token": csrf,
+        "data.TaskScreenName": task,
+        "data.LanguageId": lang,
+        "sourceCode": source,
+    }).encode()
+
+    req = Request(url, data=data)
+    req.add_header("User-Agent", "atsub/1.0")
+    req.add_header("Cookie", cookie_str)
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    try:
+        with urlopen(req) as resp:
+            final_url = resp.geturl()
+            m = re.search(r'/submissions/(\d+)', final_url)
+            if m:
+                print(f"Submitted: https://atcoder.jp/contests/{contest}/submissions/{m.group(1)}")
+            elif "submit" in final_url:
+                body = resp.read().decode()
+                if "alert-danger" in body or "error" in body.lower():
+                    err = re.search(r'class="alert[^"]*"[^>]*>([^<]+)', body, re.S)
+                    if err:
+                        print(f"ERROR: {err.group(1).strip()}", file=sys.stderr)
+                    else:
+                        print("ERROR: Submission failed (check login/cookie)", file=sys.stderr)
+                else:
+                    print("Submitted (check browser)")
+                    print(final_url)
+            else:
+                print(f"Submitted: {final_url}")
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def load_cookie():
+    if not COOKIE_JAR.exists():
+        print("ERROR: Cookie jar not found. Run aclogin first.", file=sys.stderr)
+        sys.exit(1)
+    text = COOKIE_JAR.read_text()
+    cookies = []
+    for line in text.splitlines():
+        if not line.startswith("Set-Cookie3:"):
+            continue
+        if "domain=atcoder.jp" not in line.replace(" ", ""):
+            continue
+        m = re.match(r'Set-Cookie3:\s*(\S+?);', line)
+        if m:
+            cookies.append(m.group(1))
+    if not cookies:
+        print("ERROR: No atcoder.jp cookie found. Run aclogin first.", file=sys.stderr)
+        sys.exit(1)
+    return "; ".join(cookies)
+
+def main():
+    p = argparse.ArgumentParser(description="AtCoder submit")
+    p.add_argument("file", help="source file to submit")
+    p.add_argument("-c", "--contest", help="contest (e.g. abc111)")
+    p.add_argument("-t", "--task", help="task (e.g. abc111_a)")
+    args = p.parse_args()
+
+    filepath = Path(args.file).resolve()
+    if not filepath.exists():
+        print(f"ERROR: file not found: {args.file}", file=sys.stderr)
+        sys.exit(1)
+
+    # Guess contest/task from path: abc111/a/a.cpp
+    if not args.contest or not args.task:
+        parts = filepath.parts
+        for i, p in enumerate(parts):
+            m = re.match(r'(a[brg]c\d+)', p, re.I)
+            if m:
+                args.contest = args.contest or m.group(1).lower()
+                if i+1 < len(parts):
+                    args.task = args.task or f"{args.contest}_{parts[i+1]}"
+                break
+
+    if not args.contest or not args.task:
+        print("ERROR: cannot guess contest/task. Use -c -t", file=sys.stderr)
+        sys.exit(1)
+
+    cookie = load_cookie()
+    submit(args.contest.lower(), args.task.lower(), filepath, cookie)
+
+if __name__ == "__main__":
+    main()

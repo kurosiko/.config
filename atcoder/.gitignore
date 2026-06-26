@@ -1,0 +1,18 @@
+# Compiled binaries
+a.out
+.*.out
+
+# Debug output
+output.txt
+
+# Nix build results
+result
+result-*
+
+*/tests
+
+# macOS
+.DS_Store
+
+# Editor
+.zed/

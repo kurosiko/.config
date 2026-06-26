@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# setup - AtCoder login setup via aclogin
+set -euo pipefail
+
+C=$(tput setaf 6 2>/dev/null || echo '')
+G=$(tput setaf 2 2>/dev/null || echo '')
+Y=$(tput setaf 3 2>/dev/null || echo '')
+B=$(tput bold 2>/dev/null || echo '')
+R=$(tput sgr0 2>/dev/null || echo '')
+
+echo ""
+echo "  ${B}AtCoder Login Setup${R}"
+echo "  ───────────────────"
+echo ""
+echo "  1. ${C}Browser${R}: AtCoder にログイン"
+echo "     https://atcoder.jp/login"
+echo ""
+echo "  2. ${C}DevTools${R}: F12 → Application → Cookies → atcoder.jp"
+echo "     「REVEL_SESSION」の Value をコピー"
+echo ""
+echo "  3. ${C}Terminal${R}: 以下を実行し、貼り付け"
+echo ""
+echo "     ${Y}aclogin${R}"
+echo ""
+
+read -p "  続けて aclogin を実行しますか？ [Y/n] " answer
+[[ "$answer" =~ ^[Nn] ]] && exit 0
+
+echo ""
+aclogin
+
+echo ""
+echo "  ${G}✓ Login setup complete.${R}"
+echo "  acc new / acc submit / oj submit が使えるようになった。"
+echo ""

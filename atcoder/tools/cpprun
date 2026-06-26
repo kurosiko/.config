@@ -1,0 +1,151 @@
+#!/bin/zsh
+# cpprun - C++ compile & run helper for AtCoder
+emulate -L zsh
+setopt local_options err_return
+
+# ── Colors ──────────────────────────────────────────────
+autoload -Uz colors && colors
+RED=$fg[red]; GREEN=$fg[green]; YELLOW=$fg[yellow]; BLUE=$fg[blue]
+CYAN=$fg[cyan]; DIM=$fg[white]; BOLD=$fg_bold[default]; NC=$reset_color
+
+# ── Defaults ────────────────────────────────────────────
+debug=0 keep=0 test_mode=0 custom_input="" custom_output="" src=""
+
+# ── Help ────────────────────────────────────────────────
+show_help() {
+    cat <<'EOF'
+  cpprun - C++ compile & run helper for AtCoder
+
+  Usage:
+    cpprun [file.cpp] [options]
+    cpprun                  auto-detect newest *.cpp
+    cpprun -t               run sample tests
+    cpprun -i input.txt     run with custom input
+
+  Options:
+    -d, --debug      compile with sanitizers
+    -r, --release    compile with -O2 (default)
+    -k, --keep       keep binary after running
+    -t, --test       run tests from tests/ directory
+    -i, --input F    use F as stdin
+    -o, --output F   write stdout to F (with -i)
+    -h, --help       show this help
+EOF
+    exit 0
+}
+
+# ── Parse args ──────────────────────────────────────────
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) show_help ;;
+        -d|--debug) debug=1; shift ;;
+        -r|--release) debug=0; shift ;;
+        -k|--keep) keep=1; shift ;;
+        -t|--test) test_mode=1; shift ;;
+        -i|--input) custom_input="$2"; shift 2 ;;
+        -o|--output) custom_output="$2"; shift 2 ;;
+        --) shift; break ;;
+        -*) echo "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        *) src="$1"; shift ;;
+    esac
+done
+
+# ── Auto-detect source ─────────────────────────────────
+if [[ -z "$src" ]]; then
+    candidates=( *.cpp(omN) )
+    if (( ${#candidates} == 0 )); then
+        echo "${RED}Error: No .cpp file found in current directory.${NC}"
+        exit 1
+    fi
+    src="${candidates[1]}"
+    echo "${DIM}Auto-detected:${NC} $src"
+fi
+
+if [[ ! -f "$src" ]]; then
+    echo "${RED}Error: File not found: $src${NC}"
+    exit 1
+fi
+
+exe="./.${src:r}.out"
+
+# ── Build ───────────────────────────────────────────────
+compile_flags=(-O2 -Wall -Wextra -std=c++20)
+(( debug )) && compile_flags=(-g -fsanitize=address,undefined -Wall -Wextra -std=c++20)
+
+echo "${YELLOW}Compiling${NC} $src ..."
+if g++ "${compile_flags[@]}" "$src" -o "$exe"; then
+    echo "${GREEN}Compile: OK${NC}"
+else
+    echo "${RED}Compile: FAILED${NC}"
+    exit 1
+fi
+
+# ── Test mode ──────────────────────────────────────────
+if (( test_mode )); then
+    found=0; fail=0
+    for dir in tests/ sample/; do
+        [[ -d "$dir" ]] || continue
+        for f in "$dir"/*.in(N); do
+            name="${f:t:r}"
+            got=$("$exe" < "$f" 2>/dev/null || true)
+            expected_file="${f:r}.out"
+
+            if [[ ! -f "$expected_file" ]]; then
+                echo "${YELLOW}[SKIP]${NC} $name (no .out)"
+                continue
+            fi
+            expected=$(<"$expected_file")
+            got="${got%"${got##*[![:space:]]}"}"
+            expected="${expected%"${expected##*[![:space:]]}"}"
+
+            if [[ "$got" == "$expected" ]]; then
+                echo "${GREEN}[PASS]${NC} $name"
+                found=$(( found + 1 ))
+            else
+                echo "${RED}[FAIL]${NC} $name"
+                echo "${DIM}  expected:${NC} $expected"
+                echo "${DIM}  got:     ${NC} $got"
+                fail=$(( fail + 1 ))
+            fi
+        done
+    done
+
+    if (( found == 0 && fail == 0 )); then
+        echo "${YELLOW}No test files found. Create tests/*.in / tests/*.out${NC}"
+    fi
+    echo "${DIM}──────────────────────────────────────────${NC}"
+    if (( fail == 0 )); then
+        echo "${GREEN}All ${found} tests passed.${NC}"
+    else
+        echo "${RED}${fail} test(s) failed.${NC}"
+    fi
+
+    rm -f "$exe"
+    exit $fail
+fi
+
+# ── Run ─────────────────────────────────────────────────
+echo "${DIM}──────────────────────────────────────────${NC}"
+
+if [[ -n "$custom_input" ]]; then
+    [[ ! -f "$custom_input" ]] && { echo "${RED}Input not found: $custom_input${NC}"; rm -f "$exe"; exit 1; }
+    echo "${BLUE}Input:${NC} $custom_input"
+    if [[ -n "$custom_output" ]]; then
+        "$exe" < "$custom_input" > "$custom_output"
+        echo "${BLUE}Output saved:${NC} $custom_output"
+    else
+        "$exe" < "$custom_input"
+        echo
+    fi
+elif [[ -f input.txt ]]; then
+    echo "${BLUE}Input:${NC} input.txt"
+    "$exe" < input.txt
+    echo
+else
+    "$exe"
+fi
+
+echo "${DIM}──────────────────────────────────────────${NC}"
+
+# ── Cleanup ────────────────────────────────────────────
+(( keep )) || rm -f "$exe"
