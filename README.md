@@ -22,4 +22,8 @@ ln -sfn ~/.config/vim/config ~/.vim/config
 ln -sfn ~/.config/vim/autoload ~/.vim/autoload
 ln -sf ~/.config/zsh/.zshrc ~/.zshrc
 ln -sf ~/.config/zsh/.zprofile ~/.zprofile
+
+# AtCoder: clone and build
+git clone https://github.com/kurosiko/atcoder.git ~/atcoder
+cd ~/atcoder && nix develop --impure
 ```
