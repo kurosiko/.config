@@ -35,8 +35,6 @@ let g:startify_lists = [
             \ ]
 
 " Transparent background for startify so Ghostty's background image shows through
-highlight clear StartifyBg
-highlight StartifyBg guibg=NONE ctermbg=NONE
 augroup startify_transparent
     autocmd!
     autocmd FileType startify setlocal wincolor=StartifyBg
@@ -50,4 +48,6 @@ let g:startify_commands = [
     \{ 'q':['󰗡  Update + Quit','PlugUpdate | qa']},
     \ ]
 
-let g:startify_custom_header = systemlist('figlet -c -f smslant AhogeVim')
+let g:startify_custom_header = executable('figlet')
+    \ ? systemlist('figlet -c -f smslant AhogeVim')
+    \ : ['AhogeVim']

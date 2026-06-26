@@ -14,11 +14,6 @@ node_modules/
 
 # macOS
 .DS_Store
-# AtCoder
 
-# Other app configs (optional)
-gh/
-spicetify/
-opencode/
-mise/
-zed/
+# vim-plug (auto-downloaded by bootstrap)
+vim/autoload/plug.vim

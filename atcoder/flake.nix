@@ -11,7 +11,7 @@
       systems = import systems;
 
       perSystem = { pkgs, ... }: let
-        inherit (pkgs.python3Packages) buildPythonPackage buildPythonApplication;
+        inherit (pkgs) buildPythonPackage buildPythonApplication;
 
         my-atcoder-cli = pkgs.buildNpmPackage {
           pname = "atcoder-cli";

@@ -3,8 +3,8 @@ ratio = [1, 2, 2]
 
 [opener]
 vim = [
-  { run = '/run/current-system/sw/bin/vim --servername VIM --remote "$@"', desc = "vim", orphan = true },
+  { run = 'vim --servername VIM --remote "$@"', desc = "vim", orphan = true },
 ]
 text = [
-  { run = '/run/current-system/sw/bin/vim "$@"', desc = "vim", orphan = true },
+  { run = 'vim "$@"', desc = "vim", orphan = true },
 ]

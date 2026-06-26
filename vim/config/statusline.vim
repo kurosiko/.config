@@ -1,7 +1,6 @@
 " ------------------------------------------------------------
 " Statusline (lightline) — extended with mode, devicons, diagnostics
 " ------------------------------------------------------------
-let g:airline_theme = 'catppuccin_mocha'
 let g:lightline = {
 \   'colorscheme': 'catppuccin_mocha',
 \   'mode_map': { 'n': 'NORMAL', 'i': 'INSERT', 'R': 'REPLACE', 'v': 'VISUAL', 'V': 'V-LINE', "\<C-v>": 'V-BLOCK', 'c': 'COMMAND', 's': 'SELECT', 'S': 'S-LINE', "\<C-s>": 'S-BLOCK', 't': 'TERMINAL' },
