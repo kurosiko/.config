@@ -17,3 +17,13 @@ node_modules/
 
 # vim-plug (auto-downloaded by bootstrap)
 vim/autoload/plug.vim
+
+# Nix / home-manager local state
+home/result
+home/.direnv
+
+# home-manager activation creates these; per-user, do not commit
+atcoder-cli-nodejs/
+environment.d/
+nix/
+systemd/
