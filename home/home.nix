@@ -65,6 +65,7 @@ let
     figlet
     ffmpeg
     deno
+    gh
   ];
 
   home.sessionVariables = {
