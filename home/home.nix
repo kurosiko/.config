@@ -40,21 +40,23 @@ let
   };
 
   # bash stays installed and is the literal $SHELL on hosts where chsh
-  # is unavailable. Injecting `exec zsh` at the end of .bashrc means
-  # any interactive bash launches zsh instead, so the user always lands
-  # in zsh regardless of the chsh state.
-  programs.bash = {
-    enable = true;
-    bashrcExtra = ''
-      # Launch zsh for interactive shells so dotfiles work even when
-      # chsh is not available (WSL, NixOS before shell change, etc.)
-      if [ -n "$PS1" ] && [ -z "$ZSH_FROM_BASH_RUNTIME" ] \
-         && [ -x "$HOME/.nix-profile/bin/zsh" ]; then
-        export ZSH_FROM_BASH_RUNTIME=1
+  # is unavailable. We do NOT use programs.bash.enable because that
+  # would clobber the OS-default .bashrc. Instead we ship a tiny
+  # .bash_profile that execs zsh on login — this works on WSL where
+  # every new terminal launches a login bash, on NixOS before the
+  # first `users.users.<name>.shell = pkgs.zsh` rebuild, and on macOS
+  # for shells opened via Terminal.app's "login shell" preference.
+  home.file.".bash_profile" = {
+    text = ''
+      # Auto-launch zsh for login bash. Touched by home-manager so the
+      # user lands in zsh even when chsh is not available.
+      if [ -x "$HOME/.nix-profile/bin/zsh" ] && [ -z "$ZSH_RUNTIME" ]; then
+        export ZSH_RUNTIME=1
         export SHELL="$HOME/.nix-profile/bin/zsh"
         exec "$HOME/.nix-profile/bin/zsh"
       fi
     '';
+    force = true;
   };
 
   # ----- Packages -----
