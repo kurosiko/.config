@@ -19,12 +19,13 @@ xcode-select --install
 curl -sSf -L https://install.determinate.systems/nix | sh -s -- install
 # new terminal
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
-nix run nix-darwin -- switch --flake ~/.config/nix-config#WindowsVista
+# edit ~/.config/nix-config/flake.nix: replace host = "WindowsVista"
+# with your hostname (scutil --get LocalHostName)
+nix run nix-darwin -- switch --flake ~/.config/nix-config#<host>
 ```
 
-Edit the hostname in `~/.config/nix-config/flake.nix` to match
-`scutil --get LocalHostName`. The first switch prompts for the macOS
-password; after that use `darwin-rebuild switch --flake .#WindowsVista`.
+The first switch prompts for the macOS password. After that use
+`darwin-rebuild switch --flake .#<host>`.
 
 ## Ubuntu / WSL
 
