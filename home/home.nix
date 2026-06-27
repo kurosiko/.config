@@ -46,7 +46,6 @@
 
   # ----- Packages -----
   home.packages = with pkgs; [
-    neovim
     vim
     yazi
     ghostty
@@ -66,8 +65,8 @@
   ];
 
   home.sessionVariables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
+    EDITOR = "vim";
+    VISUAL = "vim";
   };
 
   # ----- Dotfile symlinks + .bash_profile -----
