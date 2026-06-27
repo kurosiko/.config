@@ -19,13 +19,11 @@ xcode-select --install
 curl -sSf -L https://install.determinate.systems/nix | sh -s -- install
 # new terminal
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
-# edit ~/.config/nix-config/flake.nix: replace host = "WindowsVista"
-# with your hostname (scutil --get LocalHostName)
-nix run nix-darwin -- switch --flake ~/.config/nix-config#<host>
+nix run nix-darwin -- switch --flake ~/.config/nix-config
 ```
 
-The first switch prompts for the macOS password. After that use
-`darwin-rebuild switch --flake .#<host>`.
+The first switch prompts for the macOS password. After that:
+`darwin-rebuild switch --flake ~/.config/nix-config`.
 
 ## Ubuntu / WSL
 
@@ -34,13 +32,12 @@ sudo apt update && sudo apt install -y git curl
 curl -sSf -L https://install.determinate.systems/nix | sh -s -- install
 # new terminal
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
-nix run home-manager/master -- switch --flake ~/.config/home#kurosiko --impure
+nix run home-manager/master -- switch --flake ~/.config/home --impure
 ```
 
-The `#kurosiko` after `#` is the flake's `homeConfigurations` attribute
-name (see *Different username* below). WSL2 only. The home-manager
-`.bash_profile` execs zsh for login bash so every new terminal lands in
-zsh. Make it permanent with `sudo chsh -s $(command -v zsh) $USER`.
+WSL2 only. The home-manager `.bash_profile` execs zsh for login bash
+so every new terminal lands in zsh. Make it permanent with
+`sudo chsh -s $(command -v zsh) $USER`.
 
 ## NixOS
 
@@ -73,15 +70,15 @@ username = "yourname";             # <-- edit
 homeDirectory = "/home/yourname";  # <-- edit (macOS: /Users/yourname)
 ```
 
-The flake exposes `homeConfigurations.${username}`, so the attribute
-name after `#` follows whatever you set. `home.nix` does not need to be
-edited — username is forwarded via `extraSpecialArgs`.
+The flake attribute is always `default`, so the switch command stays
+`--flake .`. `home.nix` does not need editing — username is forwarded
+via `extraSpecialArgs`.
 
 ## Updating
 
 ```sh
 git -C ~/.config pull --recurse-submodules
-cd ~/.config/home && nix run home-manager/master -- switch --flake .#kurosiko --impure
+cd ~/.config/home && nix run home-manager/master -- switch --flake . --impure
 nix flake update
 ```
 
@@ -100,15 +97,8 @@ nix flake update
 - **`command 'nix' not found`** — close and reopen the terminal.
 - **`fatal: not a git repository: .../nix-config`** — `git submodule
   update --init --recursive` from the repo root.
-- **WSL `Nix requires WSL 2`** — `wsl.exe --set-version Ubuntu 2`
-  (admin PowerShell).
+- **WSL `Nix requires WSL 2`** — `wsl.exe --set-version Ubuntu 2`.
 - **WSL `sudo: a password is required`** — `sudo usermod -aG sudo "$USER"`.
 - **macOS `darwin-rebuild: command not found`** — log out and back in.
-- **macOS: `nix-darwin` cannot find host** — replace `WindowsVista`
-  with `scutil --get LocalHostName`.
 - **`error: Path 'flake.nix' is not tracked by Git`** — `git add
   flake.nix && git commit` inside the flake directory.
-- **`#kurosiko` (or any `#name`) in the switch command** — that's the
-  `homeConfigurations.<name>` flake output. Rename it by editing
-  `username = "..."` at the top of `home/flake.nix`; the attribute
-  follows automatically.

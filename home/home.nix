@@ -1,8 +1,4 @@
-{ config, pkgs, lib, system, username, homeDirectory, ... }:
-
-let
-  cfg = config.home;
-  in
+{ config, pkgs, system, username, homeDirectory, ... }:
 
 {
   home.username = username;
