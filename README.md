@@ -1,204 +1,207 @@
 # .config
 
-Personal dotfiles managed in `~/.config`.
+Personal dotfiles managed in `~/.config`. Designed to bootstrap a freshly
+installed OS to a working developer environment in a few terminal
+commands.
 
 ## Contents
 
-- **ghostty/** - Terminal emulator config + theme
 - **home/** - Home Manager flake (Linux / WSL / NixOS)
 - **nix-config/** - nix-darwin system configuration (macOS only)
 - **vim/** - Neovim/Vim config (vim-plug based)
 - **yazi/** - Terminal file manager config
 - **zsh/** - Shell config (zshrc, zprofile)
+- **ghostty/** - Terminal emulator config + theme
 - **atcoder/** - AtCoder dev environment (nix flake, cpprun, tools)
 
 ## Architecture
 
-This repo is split into three Nix entry points by host OS:
-
 | Host | Tool | Config | Purpose |
 | --- | --- | --- | --- |
 | **macOS** | `nix-darwin` | `nix-config/` | system settings (Dock, Finder, yabai, skhd) + packages |
-| **Linux / WSL** | `home-manager` (standalone) | `home/` | user packages, dotfile symlinks, shell config |
+| **Ubuntu / WSL** | `home-manager` (standalone) | `home/` | user packages + dotfile symlinks |
 | **NixOS** | `home-manager` (NixOS module) | `home/` (imported) | user packages + dotfile symlinks |
 
 The shared parts (`vim/`, `zsh/`, `yazi/`, `ghostty/`, `atcoder/`) are
-plain files referenced by both `nix-config/` and `home/` via
-`home.file.<path>.source = ../<dir>`.
+plain files referenced by both `nix-config/` and `home/`.
 
-## Prerequisites
+## Per-OS quick start (fresh install)
 
-Pick one package manager:
+Pick the section that matches the host. Each ends at a working terminal
+with `nvim`, `yazi`, `fzf`, `eza`, etc. on `PATH` and the dotfiles
+symlinked.
 
-- [Nix](https://determinate.systems/nix-installer/) (recommended; required
-  for `nix-darwin` and `home-manager`)
-- Or the Determinate Nix installer, which enables flakes by default
-
-Enable flakes if not already:
+### macOS (Apple Silicon or Intel)
 
 ```sh
-mkdir -p ~/.config/nix
-cat > ~/.config/nix/nix.conf <<'EOF'
-experimental-features = nix-command flakes
-EOF
-```
+# 1. (one-time) install Xcode Command Line Tools — opens a dialog
+xcode-select --install
 
-## Setup
+# 2. (one-time) install Nix
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 
-### 1. Clone dotfiles
-
-```sh
+# 3. open a new terminal (so nix is on PATH), then:
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
+# edit hostname in ~/.config/nix-config/flake.nix if not "WindowsVista"
+nix run nix-darwin -- switch --flake ~/.config/nix-config#WindowsVista
 ```
 
-### 2. Pick a host
+What you get:
+- zsh as login shell (via `programs.zsh.enable = true` in `mac.nix`)
+- system packages: neovim, yazi, ghostty, ffmpeg, deno, tmux, figlet, docker
+- macOS defaults: Dock autohide, Finder extensions, trackpad tweaks
+- yabai tiling WM + skhd hotkey daemon
+- JetBrains Mono + Nerd Fonts system-wide
+- direnv + nix-direnv
 
-#### macOS — nix-darwin
+To apply shared dotfiles (`vim/`, `yazi/`, `ghostty/`, `zsh/`, `atcoder/`)
+on macOS, see *Shared dotfiles on macOS* below.
 
-`nix-darwin` rebuilds `/etc`, `~/.config`, `~/Library/Application Support`
-and installs system packages. It is **macOS only**.
-
-```sh
-# install nix-darwin once (the first time you use this repo on a Mac)
-nix run nix-darwin -- switch --flake ~/.config/nix-config#<hostname>
-```
-
-Subsequent rebuilds after editing `nix-config/*.nix`:
-
-```sh
-cd ~/.config/nix-config
-nix run nix-darwin -- switch --flake .#<hostname>
-```
-
-What this does:
-- Installs system packages from `nix-config/system.nix` (Neovim, Ghostty,
-  yazi, ffmpeg, deno, tmux, figlet, docker, …) into `/run/current-system/sw`
-- Applies macOS defaults from `nix-config/mac.nix` (Dock autohide, Finder
-  extensions, trackpad)
-- Loads yabai tiling WM and skhd hotkey daemon from `nix-config/yabai.nix`
-  and `nix-config/skhd.nix`
-- Installs JetBrains Mono + Nerd Fonts system-wide
-- Enables `programs.zsh` (login shell stays zsh) and `direnv` + `nix-direnv`
-- Sets `nix.settings.experimental-features = nix-command flakes`
-
-The current configuration targets host `WindowsVista`. Edit
-`nix-config/flake.nix` to match your hostname (`scutil --get LocalHostName`).
-
-To use the shared `vim/`, `yazi/`, `ghostty/`, `zsh/`, `atcoder/` dotfiles on
-macOS, add the same `home.file.<path>.source = ../<dir>` block to a
-home-manager module inside `nix-config/` (the existing `nix-config/*.nix`
-is system-level only).
-
-#### Linux / WSL — Home Manager (standalone)
-
-Use this on plain Linux, WSL, or anywhere you have a user-mode Nix install
-but no NixOS.
+### Ubuntu (22.04+, desktop or server)
 
 ```sh
-# install Home Manager once (downloads the master release)
-nix run home-manager/master -- init --switch
-# then point it at this repo's flake
+# 1. (one-time) install git + curl
+sudo apt update && sudo apt install -y git curl
+
+# 2. (one-time) install Nix
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+
+# 3. open a new terminal (so nix is on PATH), then:
+git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
 nix run home-manager/master -- switch \
     --flake ~/.config/home#kurosiko \
     --impure
 ```
 
-Notes:
-- Edit `home/home.nix` to change `home.username` / `home.homeDirectory` if
-  your user is not `kurosiko`. Rename the flake attribute in
-  `home/flake.nix` to match.
-- `--impure` is required because the `home.file` entries reference
-  `$HOME/.config/...` by absolute path. If you prefer pure evaluation, move
-  the dotfiles out of `~/.config` and update the `home.file.source` paths.
-- An activation script (`home.activation.cleanupLegacyFiles`) removes any
-  pre-existing `~/.zshrc` / `~/.zprofile` symlinks before home-manager
-  regenerates them.
-- After switch, your login shell is still bash. Add this to `~/.bashrc` so
-  logins land in the home-manager zsh:
+What you get:
+- bash stays the login shell (we do not touch it)
+- user packages: neovim, yazi, ghostty, ripgrep, fd, bat, fzf, zoxide, eza,
+  tmux, stow, zsh (installed but not used unless you `chsh`), figlet,
+  ffmpeg, deno
+- symlinks: `~/.vimrc` → repo, `~/.config/{zsh,vim,yazi,ghostty,atcoder}`
+  → repo (managed by home-manager from the nix store)
+- `EDITOR=nvim` is set in the home-manager session vars
 
-  ```sh
-  if [ -e "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ]; then
-    . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
-  fi
-  if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
-    . "$HOME/.nix-profile/etc/profile.d/nix.sh"
-  fi
-  if [ -z "$ZSH_RUNTIME" ] && [ -x "$HOME/.nix-profile/bin/zsh" ]; then
-    export ZSH_RUNTIME=1
-    exec "$HOME/.nix-profile/bin/zsh"
-  fi
-  ```
-
-  Or, if you can `sudo chsh`, set the login shell to
-  `$(command -v zsh)` directly.
-
-To update the configuration after editing `home.nix`:
+### WSL (Ubuntu 22.04+)
 
 ```sh
-cd ~/.config/home
-git add -A && git commit -m "update home"
-nix run home-manager/master -- switch --flake .#kurosiko --impure
+# 1. (one-time) enable WSL on Windows PowerShell (admin):
+#      wsl --install
+#    then reboot, launch "Ubuntu" from the Start menu, create your user.
+
+# 2. (one-time) install git + curl inside the WSL distro
+sudo apt update && sudo apt install -y git curl
+
+# 3. (one-time) install Nix (Determinate installer works without systemd)
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+
+# 4. open a new WSL terminal (so nix is on PATH), then:
+git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
+nix run home-manager/master -- switch \
+    --flake ~/.config/home#kurosiko \
+    --impure
 ```
 
-#### NixOS — Home Manager (NixOS module)
+Same result as Ubuntu. The Determinate Nix installer sets up the daemon
+without `systemd`, which is the WSL default.
 
-On NixOS, the `home-manager` module is built into `nixosModules`, so the
-`--impure` flag is not needed and there is no separate `nix profile`
-install.
+### NixOS (any install method)
 
-Add to `/etc/nixos/configuration.nix`:
-
-```nix
-{ pkgs, ... }:
-{
-  imports = [ ~/.config/home/flake.nix ];
-  # pick a username to deploy to
-  home-manager.users.kurosiko = import ~/.config/home {
-    inherit pkgs;
-  };
-
-  # or, if you want the home-manager flake's nixosModules integration
-  # home-manager.users.kurosiko.imports = [ ~/.config/home/home.nix ];
-}
-```
-
-Then:
+After installing NixOS via the official ISO/USB and logging in:
 
 ```sh
+# 1. (one-time) make sure git is available
+sudo nix-shell -p git --run 'true'
+
+# 2. (one-time) clone the repo as root, or as a user with sudo
+sudo git clone --recurse-submodules \
+    https://github.com/kurosiko/.config.git /etc/dotfiles
+sudo chown -R kurosiko:users /etc/dotfiles
+
+# 3. add the home-manager integration to /etc/nixos/configuration.nix:
+sudoedit /etc/nixos/configuration.nix
+#   imports = [
+#     (builtins.getFlake "git+https://github.com/kurosiko/.config").nixosModules.home
+#   ];
+#   home-manager.users.kurosiko = {
+#     home.homeDirectory = "/home/kurosiko";
+#   };
+
+# 4. rebuild
 sudo nixos-rebuild switch
 ```
 
-The home-manager user environment replaces `nix-darwin` on Linux; both can
-share the same `home.nix` module if you wire it up.
+What you get:
+- the same user packages as Ubuntu/WSL
+- the same dotfile symlinks
+- bash (or whatever NixOS default) stays the login shell
+- no `--impure` flag needed — the NixOS module integration is pure
 
-### 3. Symlink shared dotfiles (optional on macOS)
+## Updating the configuration
 
-The `home/` module already creates these symlinks for Linux/WSL/NixOS. On
-macOS, either hand-link or add a similar block to your nix-darwin home
-module:
+After editing `home/home.nix` or `nix-config/*.nix`:
 
 ```sh
-ln -sf ~/.config/vim/vimrc ~/.vimrc
-ln -sfn ~/.config/vim/config ~/.vim/config
-ln -sf ~/.config/zsh/.zshrc ~/.zshrc
-ln -sf ~/.config/zsh/.zprofile ~/.zprofile
-ln -sfn ~/.config/atcoder ~/atcoder
+# macOS
+cd ~/.config/nix-config
+nix run nix-darwin -- switch --flake .#WindowsVista
+
+# Ubuntu / WSL
+cd ~/.config/home
+nix run home-manager/master -- switch --flake .#kurosiko --impure
+
+# NixOS (edit /etc/nixos/configuration.nix too)
+sudo nixos-rebuild switch
 ```
 
-### 4. AtCoder environment
+## Shared dotfiles on macOS
+
+`nix-config/` is system-level only — it does not symlink the shared
+dotfiles into your home. To use the `vim/`, `yazi/`, `ghostty/`, `zsh/`,
+`atcoder/` configs on macOS, add a `home-manager` block inside
+`nix-config/`. Example (`nix-config/home.nix`, imported by
+`nix-config/flake.nix`):
+
+```nix
+{ config, pkgs, ... }: {
+  home = {
+    username = "kurosiko";
+    homeDirectory = "/Users/kurosiko";
+    stateVersion = "24.11";
+  };
+  home.file = let cfg = "/Users/kurosiko/.config"; in {
+    ".vimrc"         = { source = "${cfg}/vim/vimrc"; force = true; };
+    ".config/zsh"    = { source = "${cfg}/zsh"; recursive = true; force = true; };
+    ".config/vim"    = { source = "${cfg}/vim"; recursive = true; force = true; };
+    ".config/yazi"   = { source = "${cfg}/yazi"; recursive = true; force = true; };
+    ".config/ghostty"= { source = "${cfg}/ghostty"; recursive = true; force = true; };
+    ".config/atcoder"= { source = "${cfg}/atcoder"; recursive = true; force = true; };
+  };
+  home.packages = with pkgs; [ neovim yazi ripgrep fd bat fzf zoxide eza tmux ];
+  home.sessionVariables = { EDITOR = "nvim"; VISUAL = "nvim"; };
+}
+```
+
+Then in `nix-config/flake.nix`, add `nix-darwin`'s home-manager module
+and import the new file. (See
+[the nix-darwin + home-manager docs](https://nix-darwin.github.io/nix-darwin/manual/index.html#module-home-manager).)
+
+## AtCoder environment
+
+After bootstrapping any host:
 
 ```sh
 cd ~/atcoder
 nix develop --impure
 ```
 
-First time only: login via browser cookie.
+First time only: log in via browser cookie.
 
 ```
 setup
 ```
 
-## How it fits together
+## Repository layout
 
 ```
 ~/.config/
@@ -233,8 +236,16 @@ setup
 - **`fatal: not a git repository: .../nix-config`** — submodule metadata
   is missing. Run `git submodule update --init --recursive` from the repo
   root.
-- **WSL `sudo: a password is required`** — the system Nix installer uses
-  the `kurosiko` user; sudo is not needed for `nix profile` or
+- **`command 'nix' not found` after install** — close and reopen the
+  terminal so the new `~/.nix-profile/etc/profile.d/nix.sh` is sourced.
+- **WSL `sudo: a password is required`** — use the user you created when
+  WSL first launched; sudo is not needed for `nix profile` or
   `home-manager` operations.
 - **macOS: `nix-darwin` cannot find host** — edit `nix-config/flake.nix`
   and replace `WindowsVista` with `scutil --get LocalHostName`.
+- **NixOS: `home-manager` complains about state version** — the first
+  switch is allowed to bump `home.stateVersion`; later changes should not
+  be made by hand.
+- **`--impure` flag** — required on standalone home-manager because the
+  `home.file` entries reference `$HOME/.config/...` by absolute path.
+  On NixOS the module integration is pure and the flag is not needed.
