@@ -10,29 +10,31 @@
   };
 
   outputs = { self, nixpkgs, home-manager, ... }:
-    {
-      # ----- Standalone (mac, Linux, WSL) -----
-      # Edit the two fields below to match your user, then:
+    let
+      # Single source of truth: edit these two values to match your
+      # user, then run:
       #   nix run home-manager -- switch \
-      #       --flake github:kurosiko/.config#kurosiko --impure
-      # If your username is not kurosiko, also rename the attribute
-      # (`kurosiko = ...` → `yourname = ...`) and pass `#yourname` above.
-      homeConfigurations.kurosiko = home-manager.lib.homeManagerConfiguration {
-        pkgs = import nixpkgs { system = "x86_64-linux"; };
-        extraSpecialArgs = {
-          system = "x86_64-linux";
-          username = "kurosiko";
-          homeDirectory = "/home/kurosiko";
-        };
+      #       --flake github:kurosiko/.config#${username} --impure
+      username = "kurosiko";
+      homeDirectory = "/home/kurosiko";
+      system = "x86_64-linux";
+
+      mkConfig = username: homeDirectory: home-manager.lib.homeManagerConfiguration {
+        pkgs = import nixpkgs { inherit system; };
+        extraSpecialArgs = { inherit system username homeDirectory; };
         modules = [ ./home.nix ];
       };
+    in {
+      # Standalone (mac, Linux, WSL): the attribute name is the
+      # username, so `homeConfigurations.<username>` matches your
+      # OS user.
+      homeConfigurations.${username} = mkConfig username homeDirectory;
 
-      # ----- NixOS module -----
-      # In /etc/nixos/configuration.nix:
+      # NixOS: in /etc/nixos/configuration.nix
       #   imports = [
       #     (builtins.getFlake "github:kurosiko/.config").nixosModules.home
       #   ];
-      #   home-manager.users.yourname = { ... };
+      #   home-manager.users.<username>.home.homeDirectory = "<homeDirectory>";
       nixosModules.home = ./home.nix;
     };
 }
