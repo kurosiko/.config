@@ -46,18 +46,7 @@ let
   # every new terminal launches a login bash, on NixOS before the
   # first `users.users.<name>.shell = pkgs.zsh` rebuild, and on macOS
   # for shells opened via Terminal.app's "login shell" preference.
-  home.file.".bash_profile" = {
-    text = ''
-      # Auto-launch zsh for login bash. Touched by home-manager so the
-      # user lands in zsh even when chsh is not available.
-      if [ -x "$HOME/.nix-profile/bin/zsh" ] && [ -z "$ZSH_RUNTIME" ]; then
-        export ZSH_RUNTIME=1
-        export SHELL="$HOME/.nix-profile/bin/zsh"
-        exec "$HOME/.nix-profile/bin/zsh"
-      fi
-    '';
-    force = true;
-  };
+  # We bundle that file into the home.file block below.
 
   # ----- Packages -----
   home.packages = with pkgs; [
@@ -83,7 +72,7 @@ let
     VISUAL = "nvim";
   };
 
-  # ----- Dotfile symlinks -----
+  # ----- Dotfile symlinks + .bash_profile -----
   # `force = true` so re-running switch clobbers stale symlinks cleanly.
   home.file = let cfgDir = homeDirectory + "/.config"; in {
     ".config/zsh"     = { source = cfgDir + "/zsh";     recursive = true; force = true; };
@@ -93,5 +82,17 @@ let
     ".config/atcoder" = { source = cfgDir + "/atcoder"; recursive = true; force = true; };
     ".vimrc"          = { source = cfgDir + "/vim/vimrc"; force = true; };
     ".atcoder"        = { source = cfgDir + "/atcoder"; force = true; };
+    ".bash_profile" = {
+      text = ''
+        # Auto-launch zsh for login bash. Touched by home-manager so the
+        # user lands in zsh even when chsh is not available.
+        if [ -x "$HOME/.nix-profile/bin/zsh" ] && [ -z "$ZSH_RUNTIME" ]; then
+          export ZSH_RUNTIME=1
+          export SHELL="$HOME/.nix-profile/bin/zsh"
+          exec "$HOME/.nix-profile/bin/zsh"
+        fi
+      '';
+      force = true;
+    };
   };
 }
