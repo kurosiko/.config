@@ -19,11 +19,11 @@ xcode-select --install
 curl -sSf -L https://install.determinate.systems/nix | sh -s -- install
 # new terminal
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
-nix run nix-darwin -- switch --flake ~/.config/nix-config
+nix run nix-darwin -- switch --flake ~/.config/nix-config#default
 ```
 
 The first switch prompts for the macOS password. After that:
-`darwin-rebuild switch --flake ~/.config/nix-config`.
+`darwin-rebuild switch --flake ~/.config/nix-config#default`.
 
 ## Ubuntu / WSL
 
@@ -32,7 +32,7 @@ sudo apt update && sudo apt install -y git curl
 curl -sSf -L https://install.determinate.systems/nix | sh -s -- install
 # new terminal
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
-nix run home-manager/master -- switch --flake ~/.config/home --impure
+nix run home-manager/master -- switch --flake ~/.config/home#default --impure
 ```
 
 WSL2 only. The home-manager `.bash_profile` execs zsh for login bash
@@ -70,15 +70,14 @@ username = "yourname";             # <-- edit
 homeDirectory = "/home/yourname";  # <-- edit (macOS: /Users/yourname)
 ```
 
-The flake attribute is always `default`, so the switch command stays
-`--flake .`. `home.nix` does not need editing — username is forwarded
-via `extraSpecialArgs`.
+The flake attribute is always `default`. `home.nix` does not need
+editing — username is forwarded via `extraSpecialArgs`.
 
 ## Updating
 
 ```sh
 git -C ~/.config pull --recurse-submodules
-cd ~/.config/home && nix run home-manager/master -- switch --flake . --impure
+cd ~/.config/home && nix run home-manager/master -- switch --flake .#default --impure
 nix flake update
 ```
 
