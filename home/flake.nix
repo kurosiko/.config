@@ -1,5 +1,5 @@
 {
-  description = "Home Manager flake for kurosiko (WSL)";
+  description = "Home Manager flake for kurosiko (mac, Linux, WSL, NixOS)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -10,14 +10,20 @@
   };
 
   outputs = { self, nixpkgs, home-manager, ... }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
-    in {
+    {
+      # Standalone (mac, Linux, WSL):
+      #   nix run home-manager -- switch \
+      #       --flake github:kurosiko/.config#kurosiko --impure
       homeConfigurations.kurosiko = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        extraSpecialArgs = { inherit system; };
+        pkgs = import nixpkgs { system = "x86_64-linux"; };
+        extraSpecialArgs = { system = "x86_64-linux"; };
         modules = [ ./home.nix ];
       };
+
+      # NixOS: configuration.nix uses:
+      #   home-manager.users.kurosiko.imports = [ ./home/home.nix ];
+      # or:
+      #   imports = [ (builtins.getFlake "github:kurosiko/.config").outputs.nixosModules.home ];
+      nixosModules.home = ./home.nix;
     };
 }
