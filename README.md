@@ -27,6 +27,36 @@ user — not just `kurosiko`.
 The shared parts (`vim/`, `zsh/`, `yazi/`, `ghostty/`, `atcoder/`) are
 plain files referenced by both `nix-config/` and `home/`.
 
+## Prerequisites
+
+Install these once per host, before following the per-OS section below.
+
+### 1. Git identity (any host)
+
+`home-manager` and `nix-darwin` will fail at the first `git commit`
+inside the flake if your identity is not set.
+
+```sh
+git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"
+```
+
+### 2. GitHub authentication (for HTTPS push/pull)
+
+The repo is `https://github.com/kurosiko/.config.git`. Cloning over
+HTTPS is anonymous. For `git push` you need credentials — pick one:
+
+```sh
+# recommended: GitHub CLI (handles credential helper automatically)
+sudo apt install gh        # Ubuntu/WSL
+brew install gh            # macOS
+gh auth login
+```
+
+…or use SSH keys: `gh auth login --git-protocol ssh` (or add
+`~/.ssh/id_ed25519.pub` to https://github.com/settings/keys and set
+`git remote set-url origin git@github.com:kurosiko/.config.git`).
+
 ## First-time setup: pick a username
 
 The home-manager flake is parameterised by username and home directory.
@@ -46,7 +76,9 @@ homeConfigurations.yourname = home-manager.lib.homeManagerConfiguration {
 ```
 
 …renaming the attribute from `kurosiko` to `yourname` as well. Then use
-`#yourname` in the switch command below instead of `#kurosiko`.
+`#yourname` in the switch command below instead of `#kurosiko`. There is
+no need to edit `home.nix` — the username is forwarded via
+`extraSpecialArgs`.
 
 ## Per-OS quick start (fresh install)
 
@@ -69,9 +101,25 @@ git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
 nix run nix-darwin -- switch --flake ~/.config/nix-config#WindowsVista
 ```
 
-`nix-darwin`'s `programs.zsh.enable = true` (in `nix-config/mac.nix`)
-calls `chsh` for you — Terminal.app opens directly into zsh after the
-first switch.
+The first `nix run nix-darwin -- switch` will:
+
+- prompt for your macOS password (it touches `/etc/zshenv`, `/etc/zprofile`,
+  `/etc/sudoers.d`, and the Dock preferences via the `defaults` CLI)
+- install `/run/current-system/sw/bin/darwin-rebuild` and add it to your
+  shell `PATH` after the next login
+- enable `programs.zsh.enable = true`, which runs `chsh -s /bin/zsh` for
+  the user. After the next login Terminal.app will open into zsh.
+
+Subsequent rebuilds can use the installed wrapper directly:
+
+```sh
+cd ~/.config/nix-config
+darwin-rebuild switch --flake .#WindowsVista
+```
+
+If you prefer GUI apps to land in zsh immediately, set
+*System Settings → Users & Groups → (right-click user) → Advanced Options
+→ Login shell → /bin/zsh* (the same shell `nix-darwin` set via `chsh`).
 
 What you get:
 - zsh as login shell
@@ -113,27 +161,74 @@ What you get:
 
 ### WSL (Ubuntu 22.04+)
 
-```sh
-# 1. (one-time) enable WSL on Windows PowerShell (admin):
-#      wsl --install
-#    then reboot, launch "Ubuntu" from the Start menu, create your user.
+WSL means **WSL2** — the Determinate Nix installer requires it. WSL1
+will fail with "Nix requires WSL 2". Confirm with `wsl.exe -l -v` from
+PowerShell: the `VERSION` column must show `2`.
 
-# 2. (one-time) install git + curl inside the WSL distro
+#### A. Enable WSL
+
+In an **Administrator** PowerShell:
+
+```powershell
+wsl --install
+# reboot, then "Ubuntu" appears in the Start menu
+```
+
+On first launch, Ubuntu prompts for a UNIX username and password. That
+user is automatically added to `sudo` and the `adm` group, so the steps
+below work out of the box. If you are using a pre-existing distro
+created by an older WSL release, ensure your account is in `sudo`:
+
+```sh
+sudo usermod -aG sudo "$USER"   # then close and reopen the terminal
+```
+
+To enable systemd (optional — needed by some services but not by
+`nix-darwin`/`home-manager`):
+
+```sh
+sudo tee /etc/wsl.conf <<'EOF'
+[boot]
+systemd=true
+EOF
+# from PowerShell:
+wsl.exe --shutdown
+```
+
+#### B. Install Nix and dotfiles
+
+```sh
+# 1. (one-time) install git + curl inside the WSL distro
 sudo apt update && sudo apt install -y git curl
 
-# 3. (one-time) install Nix (Determinate installer works without systemd)
+# 2. (one-time) install Nix (Determinate installer works without systemd)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 
-# 4. open a new WSL terminal (so nix is on PATH), then:
+# 3. open a new WSL terminal (so nix is on PATH), then:
 git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config
 nix run home-manager/master -- switch \
     --flake ~/.config/home#kurosiko \
     --impure
 ```
 
-Same result as Ubuntu. Every new Windows Terminal / VS Code / Cursor
-terminal opens a login bash, which execs into zsh via the home-manager
-`.bash_profile`.
+#### C. Editor integration (VS Code / Cursor)
+
+Install the **WSL** extension in VS Code / Cursor on the Windows side,
+then from inside WSL:
+
+```sh
+code .        # or `cursor .`
+```
+
+The first launch will download a small server into WSL; subsequent
+runs are instant. Terminals opened from VS Code (Ctrl+`) are login
+bash, which execs into zsh via the home-manager `.bash_profile`.
+
+What you get (same as Ubuntu):
+- **zsh is your login shell** for any terminal (Windows Terminal, VS Code,
+  Cursor, plain `wsl.exe`)
+- user packages and dotfile symlinks
+- `EDITOR=nvim` is set in the home-manager session vars
 
 ### NixOS (any install method)
 
@@ -151,6 +246,12 @@ sudo chown -R yourname:users /etc/dotfiles
 # 3. add the home-manager integration to /etc/nixos/configuration.nix:
 sudoedit /etc/nixos/configuration.nix
 #   { pkgs, ... }: {
+#     # nix-command + flakes are required to evaluate the flake
+#     nix.settings.experimental-features = [ "nix-command" "flakes" ];
+#
+#     # allow github:kurosiko/.config to resolve (newer NixOS only)
+#     nix.registry.kurosiko.flake = github:kurosiko/.config;
+#
 #     imports = [
 #       (builtins.getFlake "git+https://github.com/kurosiko/.config").nixosModules.home
 #     ];
@@ -164,12 +265,23 @@ sudoedit /etc/nixos/configuration.nix
 sudo nixos-rebuild switch
 ```
 
+Notes:
+- The NixOS module integration is **pure** — no `--impure` flag is
+  needed (and should not be used here).
+- `nix.registry.kurosiko.flake = github:kurosiko/.config;` is only
+  required on NixOS releases that don't pre-register the shorthand
+  `github:kurosiko/.config` in the global flake registry. On
+  24.11+ this is unnecessary; on 23.11 and earlier you need it.
+- Do **not** also run `nix run home-manager -- switch --flake .#kurosiko
+  --impure` on NixOS — that creates a standalone profile in parallel
+  to the NixOS module and the two will conflict. Use the
+  `configuration.nix` integration exclusively.
+
 What you get:
 - the same user packages as Ubuntu/WSL
 - the same dotfile symlinks
 - **zsh is the real login shell** (`users.users.yourname.shell =
   pkgs.zsh`)
-- no `--impure` flag needed — the NixOS module integration is pure
 
 ## Updating the configuration
 
@@ -178,7 +290,7 @@ After editing `home/home.nix` or `nix-config/*.nix`:
 ```sh
 # macOS
 cd ~/.config/nix-config
-nix run nix-darwin -- switch --flake .#WindowsVista
+darwin-rebuild switch --flake .#WindowsVista
 
 # Ubuntu / WSL
 cd ~/.config/home
@@ -187,6 +299,48 @@ nix run home-manager/master -- switch --flake .#kurosiko --impure
 # NixOS (edit /etc/nixos/configuration.nix too)
 sudo nixos-rebuild switch
 ```
+
+To pull new commits from `origin` and rebuild in one step:
+
+```sh
+git -C ~/.config pull --recurse-submodules
+# then run the appropriate switch command above
+```
+
+To bump the pinned `nixpkgs` / `home-manager`:
+
+```sh
+nix flake update            # bumps all inputs in flake.lock
+nix flake update nixpkgs    # only nixpkgs
+# then run the switch command
+```
+
+## Backing up existing dotfiles
+
+If you already have files at `~/.zshrc`, `~/.vimrc`, etc., the home-manager
+activation will overwrite them (the `home.file` blocks use `force = true`
+so symlinks are recreated cleanly). To keep a one-off copy first:
+
+```sh
+# dry run shows what would change
+nix run home-manager/master -- switch --flake ~/.config/home#kurosiko --impure --dry-run
+
+# real run; the activation script backs up clobbered files to
+# ~/.local/state/home-manager/bak.<timestamp>/ before linking
+nix run home-manager/master -- switch --flake ~/.config/home#kurosiko --impure -b backup
+
+# the `-b backup` option moves each conflict to
+#   ~/.local/state/nix/profiles/home-manager-<timestamp>/
+# (see `home-manager help switch` for the exact layout)
+```
+
+A non-destructive migration path:
+
+1. `git clone --recurse-submodules https://github.com/kurosiko/.config.git ~/.config`
+2. Inspect the diff: `git -C ~/.config status`
+3. Manually back up anything you want to keep:
+   `cp ~/.zshrc ~/.zshrc.before-hm && cp ~/.vimrc ~/.vimrc.before-hm`
+4. Run the switch command.
 
 ## Shared dotfiles on macOS
 
@@ -267,6 +421,10 @@ setup
     └── .zprofile
 ```
 
+The `.gitignore` excludes home-manager activation artefacts that are
+per-user and not part of the dotfiles (`environment.d/`, `systemd/`,
+`nix/`, `atcoder-cli-nodejs/`, `home/result`, `home/.direnv`).
+
 ## Troubleshooting
 
 - **`error: Path 'flake.nix' is not tracked by Git`** — Nix flakes require
@@ -277,17 +435,32 @@ setup
   root.
 - **`command 'nix' not found` after install** — close and reopen the
   terminal so the new `~/.nix-profile/etc/profile.d/nix.sh` is sourced.
+  WSL users on Windows: close the Windows Terminal tab and reopen it
+  (a new bash subprocess does not always re-source `~/.bashrc`).
 - **WSL `sudo: a password is required`** — use the user you created when
-  WSL first launched; sudo is not needed for `nix profile` or
-  `home-manager` operations.
+  WSL first launched, and ensure they are in the `sudo` group
+  (`sudo usermod -aG sudo "$USER"`). `nix profile` and `home-manager`
+  themselves never need sudo.
+- **WSL `Nix requires WSL 2`** — convert the distro with
+  `wsl.exe --set-version Ubuntu 2` (PowerShell, admin) or reinstall via
+  `wsl --install`.
 - **macOS: `nix-darwin` cannot find host** — edit `nix-config/flake.nix`
   and replace `WindowsVista` with `scutil --get LocalHostName`.
+- **macOS: `darwin-rebuild: command not found`** — the wrapper installs
+  under `/run/current-system/sw/bin/`. After the first `nix-darwin`
+  switch, log out and back in (or open a fresh Terminal tab) so
+  `/etc/zprofile` is sourced and the new PATH is on `PATH`. Use
+  `nix run nix-darwin -- switch --flake ...` until then.
 - **NixOS: `home-manager` complains about state version** — the first
   switch is allowed to bump `home.stateVersion`; later changes should not
   be made by hand.
+- **NixOS: `experimental-features` missing** — add
+  `nix.settings.experimental-features = [ "nix-command" "flakes" ];`
+  to `/etc/nixos/configuration.nix` (shown in the example above).
 - **`--impure` flag** — required on standalone home-manager because the
   `home.file` entries reference `$HOME/.config/...` by absolute path.
-  On NixOS the module integration is pure and the flag is not needed.
+  On NixOS the module integration is pure and the flag is not needed
+  (and should not be used).
 - **Zsh is not my login shell after the first switch** — on Ubuntu/WSL
   the home-manager `.bash_profile` execs zsh for login bash, but
   `/etc/passwd` still lists bash. `chsh -s $(command -v zsh)` makes
@@ -296,3 +469,17 @@ setup
 - **Different username / home directory** — edit `home/flake.nix`'s
   `username` and `homeDirectory`, rename the `homeConfigurations` attr
   if desired, then `nix run home-manager -- switch --flake .#<attr>`.
+- **VS Code / Cursor does not see Nix tools inside WSL** — install the
+  *WSL* extension on the Windows side, then run `code .` or `cursor .`
+  from a WSL terminal. The first launch downloads a small server into
+  WSL.
+- **Yazi shows broken image previews** — make sure `chafa` and
+  `ffmpeg` are on `PATH` (both come from the `home.packages` list in
+  `home.nix`).
+- **vim-plug download fails on first `nvim` launch** — `bootstrap.vim`
+  fetches `https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim`
+  with `curl`. If you are behind a corporate proxy, set `HTTPS_PROXY`
+  before running `nvim` the first time.
+- **Home-manager prints "N unread news items" on every switch** — run
+  `home-manager news` once to read them. There is no flag to mute the
+  notice, but the message itself is the only side effect.
