@@ -100,6 +100,7 @@
             pkgs.gcc
             pkgs.llvmPackages.clang-tools
             pkgs.python3
+            pkgs.zsh
             my-atcoder-cli
             my-online-judge-tools
             my-aclogin
@@ -110,7 +111,13 @@
               export PATH="$TOOLS:$PATH"
             fi
             if [[ -f "$TOOLS/chelp" ]]; then
-              bash "$TOOLS/chelp"
+              zsh "$TOOLS/chelp"
+            fi
+
+            if [[ -z "$ZSH_SWITCHED" ]]; then
+              export ZSH_SWITCHED=1
+              export SHELL="${pkgs.zsh}/bin/zsh"
+              exec "$SHELL"
             fi
           '';
         };
